@@ -8,6 +8,8 @@ const Body = z.object({
   source: z.string().max(100),
   target: z.string().max(200),
   goals: z.array(z.string().max(100)).max(10),
+  previous: z.string().max(80000).optional(),
+  instruction: z.string().max(2000).optional(),
 });
 
 const RUN_ID = "X-Lovable-AIG-Run-ID";
@@ -20,7 +22,8 @@ export const Route = createFileRoute("/api/modernize")({
         if (!parsed.success) return Response.json({ error: "Invalid request" }, { status: 400 });
         const key = process.env["LOVABLE_API_KEY"];
         if (!key) return Response.json({ error: "AI is not configured" }, { status: 500 });
-        const { code, source, target, goals } = parsed.data;
+        const { code, source, target, goals, previous, instruction } = parsed.data;
+        const wantTests = goals.some((g) => /test/i.test(g));
 
         let runId: string | undefined;
         const openai = createOpenAI({
@@ -37,17 +40,29 @@ export const Route = createFileRoute("/api/modernize")({
           },
         });
 
-        const prompt = `You are a senior engineer modernizing legacy code.
+        const format = `Output format, exactly and in this order:
+1. ONE fenced code block with the full updated code${wantTests ? " (no tests in it)" : ""}.
+${wantTests ? "2. ONE fenced code block with runnable unit tests using the idiomatic framework for the target (e.g. pytest, PHPUnit, JUnit 5, Jest/Vitest, xUnit, go test, cargo test), including a first-line comment telling how to run them.\n" : ""}Then these markdown sections:
+## Changes
+- bullet list explaining each change and behavior differences to verify
+## Security
+- bullet list of each vulnerability fixed (e.g. SQL injection, XSS, weak hashing), with CWE id when known; write "- None found" if none
+## Commit message
+A conventional-commit style message: one summary line, blank line, short body.
+Nothing else.`;
+
+        const prompt = `You are a senior engineer modernizing legacy code, including very old languages (FORTRAN, COBOL, ALGOL, BASIC, PL/I, RPG, assembly, etc).
 Source language: ${source}
 Target: ${target}
 Goals: ${goals.join("; ") || "none specified"}
 
-Rules: preserve behavior unless it is a security bug; keep names recognizable; do not invent external dependencies without saying so.
+Rules: preserve behavior unless it is a security bug; keep names recognizable; do not invent external dependencies without saying so. For framework migrations, produce idiomatic code for that framework.
 
-Output format, exactly: first ONE fenced code block containing the full updated code (and tests, if requested, in the same block). Then a short bulleted list titled "Changes" explaining each change and any behavior differences or things to verify. Nothing else.
+${format}
 
 Legacy code:
-${code}`;
+${code}
+${previous && instruction ? `\nYour previous answer was:\n${previous}\n\nThe user now asks for this refinement: ${instruction}\nApply it and reply again in the same full output format.` : ""}`;
 
         const result = streamText({
           model: openai.responses("openai/gpt-6-astra"),
