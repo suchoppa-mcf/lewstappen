@@ -26,8 +26,8 @@ const PKEY = "lcu-presets";
 const load = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) || "") as T; } catch { return d; } };
 
 function Index() {
-  const [source, setSource] = useState(SOURCES[0]);
-  const [target, setTarget] = useState(TARGETS[0]);
+  const [source, setSource] = useState<string>(SOURCES[0]!);
+  const [target, setTarget] = useState<string>(TARGETS[0]!);
   const [goals, setGoals] = useState(GOALS.map((g) => g.on));
   const [input, setInput] = useState("");
   const [raw, setRaw] = useState("");
@@ -278,7 +278,7 @@ function Highlighted({ code }: { code: string }) {
 
 function DiffView({ a, b }: { a: string; b: string }) {
   const rows = useMemo(() => {
-    const out: { l?: string; r?: string; kind: "same" | "del" | "add" | "mod" }[] = [];
+    const out: { l?: string | undefined; r?: string | undefined; kind: "same" | "del" | "add" | "mod" }[] = [];
     const parts = diffLines(a, b);
     const lines = (s: string) => s.replace(/\n$/, "").split("\n");
     for (let i = 0; i < parts.length; i++) {
