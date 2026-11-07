@@ -42,9 +42,7 @@ echo "Welcome " . $_GET["name"];
 function splitOutput(text: string) {
   const m = text.match(/```[^\n]*\n([\s\S]*?)(```|$)/);
   if (!m) return { code: text, notes: "" };
-  const start = text.indexOf(m[0]);
-  const end = text.indexOf("```", start + 3 + m[0].indexOf("\n"));
-  const rest = end > -1 && m[2] ? text.slice(start + m[0].length).trim() : "";
+  const rest = m[2] ? text.slice((m.index ?? 0) + m[0].length).trim() : "";
   return { code: m[1].replace(/\n$/, ""), notes: rest.replace(/^#+\s*[^\n]*\n/, "").replace(/^\**Changes\**:?\s*\n/i, "") };
 }
 
