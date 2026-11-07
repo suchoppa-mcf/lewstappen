@@ -28,3 +28,4 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+- AI code modernization streams from the server route src/routes/api/modernize.ts via Lovable AI Gateway; keeps the API key server-side.
