@@ -195,3 +195,16 @@
   margin: 0; width: 100%; min-height: 26rem; resize: vertical; overflow: auto; white-space: pre; outline: none;
   background: var(--code); color: var(--foreground); font: 13px/1.6 var(--font-mono); padding: 1rem;
 }
+@utility tab {
+  border-radius: calc(var(--radius) - 2px); padding: 0.2rem 0.6rem; font-size: 0.78rem; font-weight: 500; color: var(--muted-foreground);
+  &:hover { background: var(--muted); }
+}
+@utility tab-on { background: var(--accent); color: var(--accent-foreground); }
+@utility diff-del { background: color-mix(in oklab, var(--destructive) 14%, transparent); }
+@utility diff-add { background: color-mix(in oklab, oklch(0.6 0.15 150) 18%, transparent); }
+.hljs-keyword, .hljs-built_in, .hljs-selector-tag { color: var(--primary); font-weight: 600; }
+.hljs-string, .hljs-attr, .hljs-regexp { color: oklch(0.5 0.12 150); }
+.hljs-comment, .hljs-quote { color: var(--muted-foreground); font-style: italic; }
+.hljs-number, .hljs-literal { color: oklch(0.5 0.15 260); }
+.hljs-title, .hljs-function .hljs-title, .hljs-class .hljs-title { color: oklch(0.45 0.14 300); }
+.hljs-variable, .hljs-type, .hljs-params { color: oklch(0.45 0.1 220); }
