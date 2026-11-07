@@ -43,7 +43,7 @@ function splitOutput(text: string) {
   const m = text.match(/```[^\n]*\n([\s\S]*?)(```|$)/);
   if (!m) return { code: text, notes: "" };
   const rest = m[2] ? text.slice((m.index ?? 0) + m[0].length).trim() : "";
-  return { code: m[1].replace(/\n$/, ""), notes: rest.replace(/^#+\s*[^\n]*\n/, "").replace(/^\**Changes\**:?\s*\n/i, "") };
+  return { code: (m[1] ?? "").replace(/\n$/, ""), notes: rest.replace(/^#+\s*[^\n]*\n/, "").replace(/^\**Changes\**:?\s*\n/i, "") };
 }
 
 function Index() {
