@@ -165,7 +165,7 @@ function Index() {
 
         {error && <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
 
-        <section className="mt-6 grid gap-5 lg:grid-cols-2">
+        <section className="mt-6 grid items-start gap-5 lg:grid-cols-2">
           <Pane title="Legacy code" tag="before">
             <textarea value={input} onChange={(e) => setInput(e.target.value)} spellCheck={false} placeholder="Paste legacy code here…" className="code-area" />
           </Pane>
