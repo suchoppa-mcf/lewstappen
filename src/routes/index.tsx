@@ -132,7 +132,7 @@ function Index() {
     z.file("changes.diff", patch());
     z.file("CHANGES.md", `# Changes\n\n${out.changes}\n\n# Security\n\n${out.security}\n`);
     if (out.commit) z.file("COMMIT_MSG.txt", out.commit);
-    save(await z.generateAsync({ type: "blob" }), "modernized.zip");
+    save(await z.generateAsync({ type: "blob" }), "lewstappen-export.zip");
   }
   function upload(f?: File) {
     if (!f) return;
