@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Download, FileArchive, FileDiff, GitCommit, History, Loader2, Send, ShieldCheck, Sparkles, Square, Trash2, Upload, Wand2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { LogIn, LogOut, Copy, Download, FileArchive, FileDiff, GitCommit, History, Loader2, Send, ShieldCheck, Sparkles, Square, Trash2, Upload, Wand2 } from "lucide-react";
 import { diffLines, createTwoFilesPatch } from "diff";
 import hljs from "highlight.js";
 import { EXAMPLES, GOALS, SOURCES, TARGETS, parseOutput } from "@/lib/legacy";
@@ -8,9 +10,9 @@ import { EXAMPLES, GOALS, SOURCES, TARGETS, parseOutput } from "@/lib/legacy";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Legacy Code Updater — modernize old code in seconds" },
+      { title: "LewStappen — modernize old code in seconds" },
       { name: "description", content: "Paste old FORTRAN, COBOL, BASIC, PHP 5, Python 2, jQuery and more. Get modern, secure code, a diff, tests and a security audit." },
-      { property: "og:title", content: "Legacy Code Updater" },
+      { property: "og:title", content: "LewStappen — modernize legacy code" },
       { property: "og:description", content: "Turn legacy code into modern, secure code with a diff, tests and an explanation of every change." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -41,9 +43,35 @@ function Index() {
   const ctl = useRef<AbortController | null>(null);
   const out = useMemo(() => parseOutput(raw), [raw]);
 
-  useEffect(() => { setHistory(load(HKEY, [])); setPresets(load(PKEY, [])); }, []);
-  const saveHistory = (h: Entry[]) => { setHistory(h); localStorage.setItem(HKEY, JSON.stringify(h)); };
-  const savePresets = (p: Preset[]) => { setPresets(p); localStorage.setItem(PKEY, JSON.stringify(p)); };
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) { setHistory(load(HKEY, [])); setPresets(load(PKEY, [])); return; }
+    supabase.from("modernizations").select("*").order("created_at", { ascending: false }).limit(30).then(({ data }) =>
+      setHistory((data ?? []).map((r) => ({ id: r.id, at: new Date(r.created_at).getTime(), source: r.source, target: r.target, input: r.input, raw: r.raw }))));
+    supabase.from("presets").select("*").order("created_at").then(({ data }) =>
+      setPresets((data ?? []).map((r) => ({ name: r.name, source: r.source, target: r.target, goals: r.goals as boolean[] }))));
+  }, [user]);
+  const addHistory = async (e: Entry) => {
+    setHistory((h) => [e, ...h].slice(0, 30));
+    if (user) await supabase.from("modernizations").insert({ id: e.id, source: e.source, target: e.target, input: e.input, raw: e.raw });
+    else localStorage.setItem(HKEY, JSON.stringify([e, ...load<Entry[]>(HKEY, [])].slice(0, 30)));
+  };
+  const clearHistory = async () => {
+    setHistory([]);
+    if (user) await supabase.from("modernizations").delete().eq("user_id", user.id);
+    else localStorage.removeItem(HKEY);
+  };
+  const addPreset = async (p: Preset) => {
+    setPresets((ps) => [...ps.filter((x) => x.name !== p.name), p]);
+    if (user) await supabase.from("presets").upsert({ name: p.name, source: p.source, target: p.target, goals: p.goals, user_id: user.id }, { onConflict: "user_id,name" });
+    else localStorage.setItem(PKEY, JSON.stringify([...presets.filter((x) => x.name !== p.name), p]));
+  };
+  const removePreset = async (name: string) => {
+    const next = presets.filter((x) => x.name !== name);
+    setPresets(next);
+    if (user) await supabase.from("presets").delete().eq("user_id", user.id).eq("name", name);
+    else localStorage.setItem(PKEY, JSON.stringify(next));
+  };
 
   async function run(instruction?: string) {
     setError("");
@@ -76,7 +104,7 @@ function Index() {
       }
       if (!acc.trim()) setError("No result came back. Try again.");
       else {
-        saveHistory([{ id: crypto.randomUUID(), at: Date.now(), source, target, input, raw: acc }, ...load<Entry[]>(HKEY, [])].slice(0, 30));
+        void addHistory({ id: crypto.randomUUID(), at: Date.now(), source, target, input, raw: acc });
         setRefine("");
       }
     } catch (e) {
@@ -104,7 +132,7 @@ function Index() {
     z.file("changes.diff", patch());
     z.file("CHANGES.md", `# Changes\n\n${out.changes}\n\n# Security\n\n${out.security}\n`);
     if (out.commit) z.file("COMMIT_MSG.txt", out.commit);
-    save(await z.generateAsync({ type: "blob" }), "modernized.zip");
+    save(await z.generateAsync({ type: "blob" }), "lewstappen-export.zip");
   }
   function upload(f?: File) {
     if (!f) return;
@@ -117,7 +145,17 @@ function Index() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-6 py-4">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><Wand2 className="h-5 w-5" /></div>
-          <span className="font-display text-lg font-semibold tracking-tight">Legacy Code Updater</span>
+          <span className="font-display text-lg font-semibold tracking-tight">Lew<span className="text-destructive">Stappen</span></span>
+          <div className="ml-auto flex items-center gap-2 text-sm">
+            {user ? (
+              <>
+                <span className="hidden max-w-48 truncate text-muted-foreground sm:inline">{user.email}</span>
+                <button className="btn-ghost" onClick={() => supabase.auth.signOut()}><LogOut className="h-4 w-4" />Sign out</button>
+              </>
+            ) : (
+              <Link to="/auth" className="btn-primary"><LogIn className="h-4 w-4" />Sign in</Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -171,10 +209,10 @@ function Index() {
             {presets.map((p, i) => (
               <span key={p.name} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
                 <button onClick={() => { setSource(p.source); setTarget(p.target); setGoals(p.goals); }}>{p.name}</button>
-                <button aria-label={`Delete ${p.name}`} onClick={() => savePresets(presets.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
+                <button aria-label={`Delete ${p.name}`} onClick={() => removePreset(p.name)}><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
               </span>
             ))}
-            <button className="icon-btn" onClick={() => { const name = prompt("Name this preset"); if (name) savePresets([...presets.filter((p) => p.name !== name), { name, source, target, goals }]); }}>+ Save current</button>
+            <button className="icon-btn" onClick={() => { const name = prompt("Name this preset"); if (name) addPreset({ name, source, target, goals }); }}>+ Save current</button>
           </div>
         </section>
 
@@ -246,7 +284,7 @@ function Index() {
           <section className="mt-10">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><History className="h-4 w-4" />History</h2>
-              <button className="icon-btn" onClick={() => saveHistory([])}><Trash2 className="h-3.5 w-3.5" />Clear</button>
+              <button className="icon-btn" onClick={clearHistory}><Trash2 className="h-3.5 w-3.5" />Clear</button>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {history.map((h) => (
@@ -257,7 +295,7 @@ function Index() {
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">History and presets are saved in this browser only.</p>
+            <p className="mt-2 text-xs text-muted-foreground">{user ? "Saved to your LewStappen account." : "Saved in this browser only. Sign in to keep them across devices."}</p>
           </section>
         )}
       </main>
