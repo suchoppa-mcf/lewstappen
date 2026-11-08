@@ -81,10 +81,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Legacy Code Updater" },
+      { title: "LewStappen" },
       { name: "description", content: "Modernize legacy code with AI" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Legacy Code Updater" },
+      { property: "og:title", content: "LewStappen" },
       { property: "og:description", content: "Modernize legacy code with AI" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
