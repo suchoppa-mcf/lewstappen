@@ -147,6 +147,7 @@ function Index() {
           <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><Wand2 className="h-5 w-5" /></div>
           <span className="font-display text-lg font-semibold tracking-tight">Lew<span className="text-destructive">Stappen</span></span>
           <div className="ml-auto flex items-center gap-2 text-sm">
+            <Link to="/pricing" className="btn-ghost">Pricing</Link>
             {user ? (
               <>
                 <span className="hidden max-w-48 truncate text-muted-foreground sm:inline">{user.email}</span>
