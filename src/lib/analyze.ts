@@ -39,7 +39,7 @@ export function analyzeProject(all: SourceFile[]): Analysis {
 
   const databases = /\b(EXEC\s+SQL|SELECT\s+.+\s+FROM|INSERT\s+INTO|mysql_|mysqli|PDO|sqlite|psycopg|jdbc|mongoose|prisma|VSAM|DB2|IMS)\b/i.test(text);
   const hasTests = all.some((f) => /(test|spec)/i.test(f.name));
-  const security = /\b(eval\(|exec\(|mysql_query|\$_GET|\$_POST|md5\(|password\s*=|innerHTML|system\(|strcpy|gets\()/i.test(text);
+  const security = /(eval\(|exec\(|mysql_query|\$_GET|\$_POST|md5\(|password\s*=|innerHTML|system\(|strcpy|gets\()/i.test(text);
   const docs = !all.some((f) => /readme/i.test(f.name));
 
   let type = "Script / utility";
