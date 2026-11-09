@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, CreditCard, Loader2, Wand2, X } from "lucide-react";
+import { Check, CreditCard, Loader2, Upload, Wand2, X } from "lucide-react";
+import { analyzeProject, readUploads } from "@/lib/analyze";
 import { BASIC, LANG_FACTOR, PRO_RATE, TYPE_FACTOR, URGENCY_FACTOR, premiumPrice, type PremiumInput } from "@/lib/pricing";
 
 export const Route = createFileRoute("/pricing")({
@@ -22,6 +23,8 @@ const usd = (n: number) => `$${n.toFixed(2)}`;
 function Pricing() {
   const [p, setP] = useState<PremiumInput>({ lines: 2000, files: 10, language: "COBOL / RPG / PL/I", type: "Business / batch system", dependencies: 2, databases: true, tests: true, security: true, docs: false, urgency: "Standard" });
   const [files, setFiles] = useState(1);
+  const [scanning, setScanning] = useState(false);
+  const [reasons, setReasons] = useState<string[]>([]);
   const [checkout, setCheckout] = useState<{ plan: string; amount: string } | null>(null);
   const premium = premiumPrice(p);
   const set = <K extends keyof PremiumInput>(k: K, v: PremiumInput[K]) => setP((x) => ({ ...x, [k]: v }));
@@ -57,7 +60,22 @@ function Pricing() {
 
         <section className="mt-10 rounded-xl border border-border bg-card p-6 shadow-panel">
           <h2 className="font-display text-xl font-semibold">Premium project estimator</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Your price adjusts as you describe the project.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Upload your project (files or a .zip) and we'll price it automatically.</p>
+          <label className="mt-4 flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary/40 bg-accent/40 p-6 text-center hover:border-primary">
+            {scanning ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Upload className="h-6 w-6 text-primary" />}
+            <span className="font-medium">{scanning ? "Reading your project…" : "Upload project files or a .zip"}</span>
+            <input type="file" multiple className="hidden" onChange={async (e) => {
+              const fl = e.target.files; if (!fl?.length) return;
+              setScanning(true);
+              try { const a = analyzeProject(await readUploads(fl)); setReasons(a.reasons); const { reasons: _r, ...rest } = a; setP({ ...rest, urgency: p.urgency }); }
+              catch { setReasons(["Couldn't read that upload. Try a .zip or plain code files."]); }
+              finally { setScanning(false); e.target.value = ""; }
+            }} />
+          </label>
+          {reasons.length > 0 && (
+            <ul className="mt-4 grid gap-1.5 text-sm sm:grid-cols-2">{reasons.map((r) => <li key={r} className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-primary" />{r}</li>)}</ul>
+          )}
+          <p className="mt-5 text-xs text-muted-foreground">Detected details (you can adjust them):</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Num label="Lines of code" v={p.lines} on={(v) => set("lines", v)} />
             <Num label="Number of files" v={p.files} on={(v) => set("files", v)} />
