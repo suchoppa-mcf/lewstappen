@@ -44,7 +44,7 @@ export function analyzeProject(all: SourceFile[]): Analysis {
 
   let type = "Script / utility";
   if (language === "Assembly" || /\b(interrupt|volatile|register|#include\s*<avr|MOV\s+[A-Z]{2},)/i.test(text)) type = "Embedded / low-level";
-  else if (/\b(IDENTIFICATION\s+DIVISION|JCL|//\s*EXEC|FILE-CONTROL)\b/i.test(text) || language === "COBOL / RPG / PL/I") type = "Business / batch system";
+  else if (/\b(IDENTIFICATION\s+DIVISION|JCL|\/\/\s*EXEC|FILE-CONTROL)\b/i.test(text) || language === "COBOL / RPG / PL/I") type = "Business / batch system";
   else if (/<html|\$_(GET|POST)|express\(|flask|django|jquery|\$\(document\)/i.test(text)) type = "Web app";
   else if (language === "FORTRAN" || /\b(numpy|DIMENSION|REAL\*8|DOUBLE PRECISION|matrix)\b/i.test(text)) type = "Scientific / numeric";
 
