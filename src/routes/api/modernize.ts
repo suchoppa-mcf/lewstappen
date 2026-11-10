@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 const Body = z.object({
   code: z.string().min(1).max(60000),
@@ -22,6 +24,27 @@ export const Route = createFileRoute("/api/modernize")({
         if (!parsed.success) return Response.json({ error: "Invalid request" }, { status: 400 });
         const key = process.env["LOVABLE_API_KEY"];
         if (!key) return Response.json({ error: "AI is not configured" }, { status: 500 });
+        const url = process.env["SUPABASE_URL"];
+        const publicKey = process.env["SUPABASE_PUBLISHABLE_KEY"];
+        const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+        if (!token) return Response.json({ error: "Sign in to update code." }, { status: 401 });
+        if (!url || !publicKey) return Response.json({ error: "Account plans are unavailable." }, { status: 503 });
+        const client = createClient<Database>(url, publicKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: auth, error: authError } = await client.auth.getUser(token);
+        if (authError || !auth.user) return Response.json({ error: "Please sign in again." }, { status: 401 });
+        const reservation = await client.rpc("reserve_basic_trial", { code_text: parsed.data.code });
+        if (reservation.error) return Response.json({ error: reservation.error.message }, { status: 403 });
+        const accountId = auth.user.id;
+        let refunded = false;
+        const refund = async () => {
+          if (!reservation.data || refunded) return;
+          refunded = true;
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          await supabaseAdmin.rpc("refund_basic_trial_for_user", { account_id: accountId });
+        };
         const { code, source, target, goals, previous, instruction } = parsed.data;
         const wantTests = goals.some((g) => /test/i.test(g));
 
@@ -64,6 +87,7 @@ Legacy code:
 ${code}
 ${previous && instruction ? `\nYour previous answer was:\n${previous}\n\nThe user now asks for this refinement: ${instruction}\nApply it and reply again in the same full output format.` : ""}`;
 
+        try {
         const result = streamText({
           model: openai.responses("openai/gpt-6-astra"),
           prompt,
@@ -78,7 +102,25 @@ ${previous && instruction ? `\nYour previous answer was:\n${previous}\n\nThe use
             },
           },
         });
-        return result.toTextStreamResponse();
+        const reader = result.toTextStreamResponse().body?.getReader();
+        if (!reader) { await refund(); return Response.json({ error: "No result came back. Try again." }, { status: 502 }); }
+        let hadOutput = false;
+        return new Response(new ReadableStream<Uint8Array>({
+          async pull(controller) {
+            try {
+              const { done, value } = await reader.read();
+              if (done) {
+                if (!hadOutput) await refund();
+                controller.close();
+              } else { hadOutput ||= value.length > 0; controller.enqueue(value); }
+            } catch (error) { await refund(); controller.error(error); }
+          },
+          async cancel() { await reader.cancel(); await refund(); },
+        }), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+        } catch {
+          await refund();
+          return Response.json({ error: "Couldn't update code. Your trial was not used." }, { status: 502 });
+        }
       },
     },
   },
