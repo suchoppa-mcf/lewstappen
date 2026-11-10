@@ -1,3 +1,3 @@
-- [ ] Store editable specials and secure account plans in Lovable Cloud.
-- [ ] Activate free plans without card details and show the active plan in the header.
-- [ ] Enforce Basic's three uses and five-line limit, then verify activation and limits.
+- [x] Store editable specials and secure account plans in Lovable Cloud.
+- [x] Activate free plans without card details and show the active plan in the header.
+- [x] Enforce Basic's three uses and five-line limit, then verify activation and limits.
