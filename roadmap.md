@@ -1,3 +1,6 @@
 - [x] Store editable specials and secure account plans in Lovable Cloud.
 - [x] Activate free plans without card details and show the active plan in the header.
 - [x] Enforce Basic's three uses and five-line limit, then verify activation and limits.
+- [ ] Add account-specific specials, email whitelist, and MCFAIC26 redemption.
+- [ ] Add protected developer roles, account management, and permanent usage totals.
+- [ ] Verify promotion redemption, developer controls, and access restrictions.
