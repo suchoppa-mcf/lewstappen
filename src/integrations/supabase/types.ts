@@ -140,6 +140,10 @@ export type Database = {
         }
       }
       refund_basic_trial: { Args: never; Returns: undefined }
+      refund_basic_trial_for_user: {
+        Args: { account_id: string }
+        Returns: undefined
+      }
       reserve_basic_trial: { Args: { code_text: string }; Returns: boolean }
     }
     Enums: {
