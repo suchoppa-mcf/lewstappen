@@ -1,10 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, CreditCard, Loader2, Upload, Wand2, X } from "lucide-react";
+import { Check, Loader2, Upload, Wand2 } from "lucide-react";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
+import { PlanBadge } from "@/components/plan-badge";
+import { useAccount } from "@/components/plan-provider";
+import { activatePlan } from "@/lib/plans.functions";
+import { specialsOptions } from "@/lib/plans.queries";
+import { specialIsFree, type PlanTier } from "@/lib/plans";
 import { analyzeProject, readUploads } from "@/lib/analyze";
 import { BASIC, LANG_FACTOR, PRO_RATE, TYPE_FACTOR, URGENCY_FACTOR, premiumPrice, type PremiumInput } from "@/lib/pricing";
 
 export const Route = createFileRoute("/pricing")({
+  loader: ({ context }) => context.queryClient.ensureQueryData(specialsOptions),
   head: () => ({
     meta: [
       { title: "Pricing — LewStappen" },
@@ -25,19 +34,29 @@ function Pricing() {
   const [files, setFiles] = useState(1);
   const [scanning, setScanning] = useState(false);
   const [reasons, setReasons] = useState<string[]>([]);
-  const [checkout, setCheckout] = useState<{ plan: string; amount: string } | null>(null);
+  const { data: specials } = useSuspenseQuery(specialsOptions);
+  const free = specialIsFree(specials);
+  const { user, ready } = useAccount();
+  const activate = useServerFn(activatePlan);
+  const mutation = useMutation({ mutationFn: (tier: PlanTier) => activate({ data: { tier } }), onSuccess: () => window.location.assign("/") });
+  const choose = (tier: PlanTier) => {
+    if (!ready || mutation.isPending) return;
+    if (!user) { window.location.assign("/auth"); return; }
+    mutation.mutate(tier);
+  };
   const premium = premiumPrice(p);
   const set = <K extends keyof PremiumInput>(k: K, v: PremiumInput[K]) => setP((x) => ({ ...x, [k]: v }));
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-6 py-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><Wand2 className="h-5 w-5" /></div>
             <span className="font-display text-lg font-semibold">Lew<span className="text-destructive">Stappen</span></span>
           </Link>
-          <Link to="/" className="btn-ghost ml-auto">Back to app</Link>
+          <div className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
+          <Button asChild variant="ghost" className="col-start-3 row-start-1 justify-self-end"><Link to="/">Back to app</Link></Button>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 pb-20">
@@ -45,18 +64,22 @@ function Pricing() {
           <p className="mb-3 font-mono text-xs uppercase tracking-[0.2em] text-destructive">// pricing</p>
           <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Pick the plan that fits your code</h1>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">Demo only — no real payment is taken.</p>
+          {specials?.is_active && <div className="mt-5 text-sm"><span className="inline-flex rounded-md bg-baby-red px-3 py-1 font-medium text-destructive">{specials.special_tag}</span><p className="mt-2 text-muted-foreground">{specials.promo_description}</p></div>}
         </section>
+        {mutation.isError && <p role="alert" className="mb-5 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{mutation.error.message}</p>}
+        {mutation.isPending && <p role="status" className="mb-5 flex items-center justify-center gap-2 text-sm text-primary"><Loader2 className="h-4 w-4 animate-spin" />Activating your plan…</p>}
 
         <div className="grid gap-5 lg:grid-cols-3">
           <Plan name="Basic" price="Free" note={`${BASIC.trials} trials per user`} features={[`${BASIC.trials} free modernizations`, `Up to ${BASIC.maxLines} lines of code each`, "Diff and security audit"]}
-            cta="Start free" onClick={() => setCheckout({ plan: "Basic", amount: "$0.00" })} />
+            cta="Start free" disabled={!ready || mutation.isPending} onClick={() => choose("basic")} />
           <Plan name="Pro" price={usd(PRO_RATE)} note="per file, per hour" highlight features={["Fixed hourly rate per file", "No line limit", "Tests, .patch and .zip exports", "Saved history and presets"]}
-            cta="Choose Pro" onClick={() => setCheckout({ plan: `Pro · ${files} file${files > 1 ? "s" : ""}`, amount: usd(PRO_RATE * files) })}>
+            cta="Choose Pro" disabled={!ready || mutation.isPending || !free} onClick={() => choose("pro")}>
             <label className="mt-4 flex items-center justify-between text-sm">Files <input type="number" min={1} value={files} onChange={(e) => setFiles(Math.max(1, +e.target.value))} className="field w-24" /></label>
           </Plan>
           <Plan name="Premium" price={usd(premium)} note="one-time, per project" features={["Priced to your project", "Everything in Pro", "Priority support"]}
-            cta="Buy Premium" onClick={() => setCheckout({ plan: "Premium project", amount: usd(premium) })} />
+            cta="Buy Premium" disabled={!ready || mutation.isPending || !free} onClick={() => choose("premium")} />
         </div>
+        <p className="mt-4 text-center text-sm text-muted-foreground">{free ? "Due today: $0.00 on every plan. No card required." : "Paid activation is unavailable. No payment will be taken."}{!user && " Sign in to activate your plan."}</p>
 
         <section className="mt-10 rounded-xl border border-border bg-card p-6 shadow-panel">
           <h2 className="font-display text-xl font-semibold">Premium project estimator</h2>
@@ -95,12 +118,11 @@ function Pricing() {
           </div>
         </section>
       </main>
-      {checkout && <Checkout {...checkout} onClose={() => setCheckout(null)} />}
     </div>
   );
 }
 
-function Plan({ name, price, note, features, cta, onClick, highlight, children }: { name: string; price: string; note: string; features: string[]; cta: string; onClick: () => void; highlight?: boolean; children?: React.ReactNode }) {
+function Plan({ name, price, note, features, cta, onClick, highlight, children, disabled }: { name: string; price: string; note: string; features: string[]; cta: string; onClick: () => void; highlight?: boolean; children?: React.ReactNode; disabled?: boolean }) {
   return (
     <div className={`flex flex-col rounded-xl border bg-card p-6 ${highlight ? "border-primary shadow-panel" : "border-border"}`}>
       <div className="flex items-center justify-between">
@@ -111,7 +133,7 @@ function Plan({ name, price, note, features, cta, onClick, highlight, children }
       <p className="text-sm text-muted-foreground">{note}</p>
       <ul className="mt-5 flex-1 space-y-2 text-sm">{features.map((f) => <li key={f} className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-primary" />{f}</li>)}</ul>
       {children}
-      <button onClick={onClick} className={`${highlight ? "btn-primary" : "btn-ghost"} mt-6 justify-center`}>{cta}</button>
+      <Button onClick={onClick} disabled={disabled} variant={highlight ? "default" : "outline"} className="mt-6">{cta}</Button>
     </div>
   );
 }
@@ -123,33 +145,3 @@ function Sel({ label, v, opts, on }: { label: string; v: string; opts: string[];
   return <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">{label}<select value={v} onChange={(e) => on(e.target.value)} className="field">{opts.map((o) => <option key={o}>{o}</option>)}</select></label>;
 }
 
-function Checkout({ plan, amount, onClose }: { plan: string; amount: string; onClose: () => void }) {
-  const [state, setState] = useState<"form" | "busy" | "done">("form");
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold">Checkout</h2>
-          <button aria-label="Close" onClick={onClose}><X className="h-5 w-5" /></button>
-        </div>
-        {state === "done" ? (
-          <div className="py-6 text-center">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent text-primary"><Check className="h-6 w-6" /></div>
-            <p className="mt-4 font-semibold">You're on {plan}!</p>
-            <p className="mt-1 text-sm text-muted-foreground">This was a demo — no money was charged.</p>
-            <Link to="/" className="btn-primary mt-6 justify-center">Start modernizing</Link>
-          </div>
-        ) : (
-          <form onSubmit={(e) => { e.preventDefault(); setState("busy"); setTimeout(() => setState("done"), 1200); }} className="flex flex-col gap-3">
-            <div className="flex justify-between rounded-md bg-muted px-3 py-2 text-sm"><span>{plan}</span><span className="font-semibold">{amount}</span></div>
-            <input required placeholder="Name on card" className="field" />
-            <input required placeholder="4242 4242 4242 4242" inputMode="numeric" className="field" />
-            <div className="flex gap-3"><input required placeholder="MM/YY" className="field w-1/2" /><input required placeholder="CVC" className="field w-1/2" /></div>
-            <p className="rounded-md bg-baby-red px-3 py-2 text-xs text-destructive">Demo checkout — don't enter a real card.</p>
-            <button disabled={state === "busy"} className="btn-primary justify-center">{state === "busy" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}Pay {amount}</button>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-}

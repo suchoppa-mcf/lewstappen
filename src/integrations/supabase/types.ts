@@ -74,12 +74,77 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_settings: {
+        Row: {
+          all_plans_free: boolean
+          id: string
+          is_active: boolean
+          promo_description: string
+          special_tag: string
+        }
+        Insert: {
+          all_plans_free?: boolean
+          id?: string
+          is_active?: boolean
+          promo_description?: string
+          special_tag?: string
+        }
+        Update: {
+          all_plans_free?: boolean
+          id?: string
+          is_active?: boolean
+          promo_description?: string
+          special_tag?: string
+        }
+        Relationships: []
+      }
+      user_plans: {
+        Row: {
+          tier: string
+          trials_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          tier?: string
+          trials_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          tier?: string
+          trials_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      activate_free_plan: {
+        Args: { selected_tier: string }
+        Returns: {
+          tier: string
+          trials_used: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_plans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      refund_basic_trial: { Args: never; Returns: undefined }
+      refund_basic_trial_for_user: {
+        Args: { account_id: string }
+        Returns: undefined
+      }
+      reserve_basic_trial: { Args: { code_text: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

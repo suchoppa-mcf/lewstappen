@@ -6,6 +6,9 @@ import { LogIn, LogOut, Copy, Download, FileArchive, FileDiff, GitCommit, Histor
 import { diffLines, createTwoFilesPatch } from "diff";
 import hljs from "highlight.js";
 import { EXAMPLES, GOALS, SOURCES, TARGETS, parseOutput } from "@/lib/legacy";
+import { PlanBadge } from "@/components/plan-badge";
+import { useAccount } from "@/components/plan-provider";
+import { basicLimitError } from "@/lib/plans";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,8 +31,8 @@ const PKEY = "lcu-presets";
 const load = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) || "") as T; } catch { return d; } };
 
 function Index() {
-  const [source, setSource] = useState<string>(SOURCES[0]!);
-  const [target, setTarget] = useState<string>(TARGETS[0]!);
+  const [source, setSource] = useState<string>(SOURCES[0] ?? "COBOL");
+  const [target, setTarget] = useState<string>(TARGETS[0] ?? "Python 3");
   const [goals, setGoals] = useState(GOALS.map((g) => g.on));
   const [input, setInput] = useState("");
   const [raw, setRaw] = useState("");
@@ -44,6 +47,7 @@ function Index() {
   const out = useMemo(() => parseOutput(raw), [raw]);
 
   const { user } = useAuth();
+  const { plan, planReady, refreshPlan } = useAccount();
   useEffect(() => {
     if (!user) { setHistory(load(HKEY, [])); setPresets(load(PKEY, [])); return; }
     supabase.from("modernizations").select("*").order("created_at", { ascending: false }).limit(30).then(({ data }) =>
@@ -76,6 +80,10 @@ function Index() {
   async function run(instruction?: string) {
     setError("");
     if (!input.trim()) return setError("Paste or upload some code first.");
+    if (!user) return setError("Sign in to use your 3 free Basic trials or activate a free Pro or Premium plan.");
+    if (!planReady) return setError("Your plan is still loading. Please try again in a moment.");
+    const limitError = basicLimitError(input, plan);
+    if (limitError) return setError(limitError);
     const previous = instruction ? raw : undefined;
     setRaw("");
     ctl.current?.abort();
@@ -83,9 +91,11 @@ function Index() {
     ctl.current = ac;
     setBusy(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error("Please sign in again to update code.");
       const res = await fetch("/api/modernize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionData.session.access_token}` },
         body: JSON.stringify({ code: input, source, target, goals: GOALS.filter((_, i) => goals[i]).map((g) => g.label), previous, instruction }),
         signal: ac.signal,
       });
@@ -111,6 +121,7 @@ function Index() {
       if ((e as Error).name !== "AbortError") { setError((e as Error).message); if (previous) setRaw(previous); }
     } finally {
       setBusy(false);
+      void refreshPlan();
     }
   }
 
@@ -143,10 +154,13 @@ function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-6 py-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><Wand2 className="h-5 w-5" /></div>
           <span className="font-display text-lg font-semibold tracking-tight">Lew<span className="text-destructive">Stappen</span></span>
-          <div className="ml-auto flex items-center gap-2 text-sm">
+          </div>
+          <div className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
+          <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 text-sm">
             <Link to="/pricing" className="btn-ghost">Pricing</Link>
             {user ? (
               <>
@@ -217,7 +231,7 @@ function Index() {
           </div>
         </section>
 
-        {error && <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error} <Link to={user ? "/pricing" : "/auth"} className="font-medium underline">{user ? "View plans" : "Sign in"}</Link></p>}
 
         <section className="mt-6 grid items-start gap-5 lg:grid-cols-2">
           <Pane title="Legacy code" tag="before" actions={
@@ -321,7 +335,8 @@ function DiffView({ a, b }: { a: string; b: string }) {
     const parts = diffLines(a, b);
     const lines = (s: string) => s.replace(/\n$/, "").split("\n");
     for (let i = 0; i < parts.length; i++) {
-      const p = parts[i]!;
+      const p = parts[i];
+      if (!p) continue;
       const n = parts[i + 1];
       if (p.removed && n?.added) {
         const L = lines(p.value), R = lines(n.value);
