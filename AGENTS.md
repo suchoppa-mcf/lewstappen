@@ -29,5 +29,8 @@ use the editor.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
 - AI code modernization streams from the server route src/routes/api/modernize.ts via Lovable AI Gateway; keeps the API key server-side.
-- Pricing specials are public-read-only settings; account tiers change only through a database function that validates the active free special, preventing client-side plan tampering.
+- Pricing specials are public-read-only except for developer edits; plan activation validates global or account-specific eligibility in the database, preventing client-side plan tampering.
 - A shared account provider owns auth state and plan reads; modernization requires a verified account and atomically reserves Basic usage in the database, preventing quota resets or concurrent overuse.
+- Developer roles live in a separate protected table; every developer RPC verifies the caller in the database before returning private account data or changing settings.
+- Successful modernization usage is recorded server-side independently of deletable history so usage totals persist when users clear history; imported history provides the available historical baseline.
+- Promotion redemption is transactional with per-account uniqueness and a locked code row so repeated or concurrent redemptions cannot exceed configured limits.

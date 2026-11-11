@@ -39,6 +39,14 @@ export const Route = createFileRoute("/api/modernize")({
         if (reservation.error) return Response.json({ error: reservation.error.message }, { status: 403 });
         const accountId = auth.user.id;
         let refunded = false;
+        let usageRecorded = false;
+        const recordUsage = async () => {
+          if (usageRecorded) return;
+          usageRecorded = true;
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { error } = await supabaseAdmin.from("usage_events").insert({ user_id: accountId, source: parsed.data.source, target: parsed.data.target });
+          if (error) console.error("Couldn't record completed modernization usage", error.code);
+        };
         const refund = async () => {
           if (!reservation.data || refunded) return;
           refunded = true;
@@ -111,6 +119,7 @@ ${previous && instruction ? `\nYour previous answer was:\n${previous}\n\nThe use
               const { done, value } = await reader.read();
               if (done) {
                 if (!hadOutput) await refund();
+                else await recordUsage();
                 controller.close();
               } else { hadOutput ||= value.length > 0; controller.enqueue(value); }
             } catch (error) { await refund(); controller.error(error); }

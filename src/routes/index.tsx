@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -47,7 +49,13 @@ function Index() {
   const out = useMemo(() => parseOutput(raw), [raw]);
 
   const { user } = useAuth();
-  const { plan, planReady, refreshPlan } = useAccount();
+  const { plan, planReady, refreshPlan, developer } = useAccount();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const signOut = async () => {
+    await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut();
+    await navigate({ to: "/auth", replace: true });
+  };
   useEffect(() => {
     if (!user) { setHistory(load(HKEY, [])); setPresets(load(PKEY, [])); return; }
     supabase.from("modernizations").select("*").order("created_at", { ascending: false }).limit(30).then(({ data }) =>
@@ -161,11 +169,12 @@ function Index() {
           </div>
           <div className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
           <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 text-sm">
+            {developer && <Button asChild variant="outline" size="sm"><Link to="/developer">Developer</Link></Button>}
             <Link to="/pricing" className="btn-ghost">Pricing</Link>
             {user ? (
               <>
                 <span className="hidden max-w-48 truncate text-muted-foreground sm:inline">{user.email}</span>
-                <button className="btn-ghost" onClick={() => supabase.auth.signOut()}><LogOut className="h-4 w-4" />Sign out</button>
+                <Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4" />Sign out</Button>
               </>
             ) : (
               <Link to="/auth" className="btn-primary"><LogIn className="h-4 w-4" />Sign in</Link>

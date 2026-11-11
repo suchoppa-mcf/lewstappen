@@ -98,23 +98,136 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string | null
+          is_active: boolean
+          max_uses: number | null
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at?: string | null
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string | null
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          code: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_redemptions_code_fkey"
+            columns: ["code"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      special_access_whitelist: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
+      usage_events: {
+        Row: {
+          created_at: string
+          id: string
+          source: string
+          target: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source: string
+          target: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source?: string
+          target?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_plans: {
         Row: {
+          has_special_access: boolean
           tier: string
           trials_used: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          has_special_access?: boolean
           tier?: string
           trials_used?: number
           updated_at?: string
           user_id?: string
         }
         Update: {
+          has_special_access?: boolean
           tier?: string
           trials_used?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -127,6 +240,7 @@ export type Database = {
       activate_free_plan: {
         Args: { selected_tier: string }
         Returns: {
+          has_special_access: boolean
           tier: string
           trials_used: number
           updated_at: string
@@ -139,6 +253,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      developer_overview: { Args: never; Returns: Json }
+      developer_update_account: {
+        Args: {
+          account_id: string
+          reset_trials: boolean
+          selected_tier: string
+          special_access: boolean
+        }
+        Returns: undefined
+      }
+      has_special_eligibility: { Args: never; Returns: boolean }
+      is_developer: { Args: never; Returns: boolean }
+      redeem_promo: { Args: { entered_code: string }; Returns: boolean }
       refund_basic_trial: { Args: never; Returns: undefined }
       refund_basic_trial_for_user: {
         Args: { account_id: string }
@@ -147,7 +274,7 @@ export type Database = {
       reserve_basic_trial: { Args: { code_text: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "developer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -274,6 +401,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["developer"],
+    },
   },
 } as const

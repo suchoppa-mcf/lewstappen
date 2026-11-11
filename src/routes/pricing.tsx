@@ -9,6 +9,7 @@ import { useAccount } from "@/components/plan-provider";
 import { activatePlan } from "@/lib/plans.functions";
 import { specialsOptions } from "@/lib/plans.queries";
 import { specialIsFree, type PlanTier } from "@/lib/plans";
+import { redeemPromotion } from "@/lib/developer.functions";
 import { analyzeProject, readUploads } from "@/lib/analyze";
 import { BASIC, LANG_FACTOR, PRO_RATE, TYPE_FACTOR, URGENCY_FACTOR, premiumPrice, type PremiumInput } from "@/lib/pricing";
 
@@ -35,8 +36,11 @@ function Pricing() {
   const [scanning, setScanning] = useState(false);
   const [reasons, setReasons] = useState<string[]>([]);
   const { data: specials } = useSuspenseQuery(specialsOptions);
-  const free = specialIsFree(specials);
-  const { user, ready } = useAccount();
+  const { user, ready, specialAccess, refreshAccess, developer } = useAccount();
+  const free = specialIsFree(specials) || specialAccess;
+  const [promo, setPromo] = useState("");
+  const redeem = useServerFn(redeemPromotion);
+  const redemption = useMutation({ mutationFn: () => redeem({ data: { code: promo } }), onSuccess: async () => { await refreshAccess(); setPromo(""); } });
   const activate = useServerFn(activatePlan);
   const mutation = useMutation({ mutationFn: (tier: PlanTier) => activate({ data: { tier } }), onSuccess: () => window.location.assign("/") });
   const choose = (tier: PlanTier) => {
@@ -56,7 +60,7 @@ function Pricing() {
             <span className="font-display text-lg font-semibold">Lew<span className="text-destructive">Stappen</span></span>
           </Link>
           <div className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
-          <Button asChild variant="ghost" className="col-start-3 row-start-1 justify-self-end"><Link to="/">Back to app</Link></Button>
+          <div className="col-start-3 row-start-1 flex flex-wrap justify-end gap-2">{developer && <Button asChild variant="outline"><Link to="/developer">Developer</Link></Button>}<Button asChild variant="ghost"><Link to="/">Back to app</Link></Button></div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 pb-20">
@@ -68,6 +72,13 @@ function Pricing() {
         </section>
         {mutation.isError && <p role="alert" className="mb-5 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{mutation.error.message}</p>}
         {mutation.isPending && <p role="status" className="mb-5 flex items-center justify-center gap-2 text-sm text-primary"><Loader2 className="h-4 w-4 animate-spin" />Activating your plan…</p>}
+        <form className="mx-auto mb-7 max-w-md" onSubmit={(e) => { e.preventDefault(); redemption.mutate(); }}>
+          <label htmlFor="promo-code" className="mb-2 block text-sm font-medium">Promotion code</label>
+          <div className="flex gap-2"><input id="promo-code" className="field min-w-0 flex-1" value={promo} onChange={(e) => setPromo(e.target.value)} maxLength={100} placeholder="Enter code" /><Button disabled={!user || !promo.trim() || redemption.isPending}>{redemption.isPending ? <Loader2 className="animate-spin" /> : <Check />}Apply</Button></div>
+          {!user && <p className="mt-2 text-sm text-muted-foreground"><Link to="/auth" className="text-primary underline">Sign in</Link> to redeem a code.</p>}
+          {redemption.isError && <p role="alert" className="mt-2 text-sm text-destructive">{redemption.error.message}</p>}
+          {redemption.isSuccess && <p role="status" className="mt-2 text-sm text-primary">Promotion applied to your account. Choose your plan below.</p>}
+        </form>
 
         <div className="grid gap-5 lg:grid-cols-3">
           <Plan name="Basic" price="Free" note={`${BASIC.trials} trials per user`} features={[`${BASIC.trials} free modernizations`, `Up to ${BASIC.maxLines} lines of code each`, "Diff and security audit"]}
