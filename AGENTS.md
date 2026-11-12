@@ -34,4 +34,4 @@ use the editor.
 - Developer roles live in a separate protected table; every developer RPC verifies the caller in the database before returning private account data or changing settings.
 - Successful modernization usage is recorded server-side independently of deletable history so usage totals persist when users clear history; imported history provides the available historical baseline.
 - Promotion redemption is transactional with per-account uniqueness and a locked code row so repeated or concurrent redemptions cannot exceed configured limits.
-- Hardware visit enquiries remain downloadable browser-only drafts until a service area and delivery destination are configured; never show an unsent enquiry as a booked visit.
+- Hardware enquiries are validated and stored by a public server function; developer-only server checks and RLS protect inbox reads, and submitting never books a visit.

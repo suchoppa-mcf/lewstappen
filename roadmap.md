@@ -6,3 +6,5 @@
 - [x] Verify promotion redemption, developer controls, and access restrictions.
 - [x] Add a hardware page for at-home device upgrades and a visit-request draft.
 - [x] Verify hardware navigation, request preparation, and mobile layout.
+- [ ] Deliver hardware enquiries to a private Developer Hardware subsection.
+- [ ] Verify submission, developer readback, and private access restrictions.

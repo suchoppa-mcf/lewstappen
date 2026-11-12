@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAccount } from "@/components/plan-provider";
 import { getDeveloperDashboard, manageDeveloperSpecials, updateDeveloperAccount } from "@/lib/developer.functions";
 import type { DirectoryUser } from "@/lib/developer";
+import { HardwareEnquiries } from "@/components/hardware-enquiries";
 
 export const Route = createFileRoute("/_authenticated/developer")({
   head: () => ({ meta: [
@@ -39,6 +40,7 @@ function Developer() {
       {query.isPending && <p role="status" className="flex gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />Loading account data…</p>}
       {query.isError && <p role="alert" className="bg-baby-red p-4 text-destructive">{query.error.message}</p>}
       {data && <>
+        <HardwareEnquiries />
         <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Registered users" value={data.totalUsers} icon={<Users className="h-4 w-4" />} />
           <Metric label="Completed updates" value={data.totalUses} icon={<Activity className="h-4 w-4" />} />

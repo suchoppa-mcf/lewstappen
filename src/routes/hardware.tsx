@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState, type FormEvent } from "react";
-import { ArrowDown, ArrowRight, Check, Cpu, Download, HardDrive, House, Laptop, Monitor, Server, Wand2, Wrench } from "lucide-react";
+import { ArrowDown, ArrowRight, Check, Cpu, Loader2, HardDrive, House, Laptop, Monitor, Server, Wand2, Wrench } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { submitHardwareEnquiry } from "@/lib/hardware.functions";
+import { hardwareEnquirySchema } from "@/lib/hardware";
 import { Button } from "@/components/ui/button";
 import { PlanBadge } from "@/components/plan-badge";
 import hardwarePhoto from "@/assets/hardware-home-upgrade.jpg";
@@ -27,27 +31,23 @@ const devices = [
 function HardwarePage() {
   const formRef = useRef<HTMLFormElement>(null);
   const [device, setDevice] = useState("Desktop / PC");
-  const [draft, setDraft] = useState("");
-  const [notice, setNotice] = useState("");
+  const requestId = useRef<string | null>(null);
+  const [validationError, setValidationError] = useState("");
+  const sendEnquiry = useServerFn(submitHardwareEnquiry);
+  const submission = useMutation({ mutationFn: (data: Parameters<typeof sendEnquiry>[0]["data"]) => sendEnquiry({ data }), onSuccess: () => { formRef.current?.reset(); setDevice("Desktop / PC"); requestId.current = null; } });
   const openEnquiry = (selection?: string) => {
     if (selection) setDevice(selection);
     formRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   };
-  const prepare = (event: FormEvent<HTMLFormElement>) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submission.isPending) return;
     const values = new FormData(event.currentTarget);
-    const text = ["LewStappen — hardware visit enquiry", "DRAFT ONLY — not submitted; no appointment booked.", "", ...[
-      ["Name", "name"], ["Email", "email"], ["City / postal code", "area"], ["Device", "device"], ["Make / model", "model"], ["Upgrade goals", "goals"], ["Additional details", "details"],
-    ].map(([label, key]) => `${label}: ${String(values.get(key ?? "") ?? "").trim()}`)].join("\n");
-    setDraft(text);
-    setNotice("");
-  };
-  const download = () => {
-    const url = URL.createObjectURL(new Blob([draft], { type: "text/plain;charset=utf-8" }));
-    const anchor = document.createElement("a");
-    anchor.href = url; anchor.download = "lewstappen-hardware-enquiry.txt"; anchor.click();
-    URL.revokeObjectURL(url);
-    setNotice("Enquiry downloaded. It has not been sent and no visit is booked.");
+    requestId.current ??= crypto.randomUUID();
+    const result = hardwareEnquirySchema.safeParse({ ...Object.fromEntries(values), id: requestId.current });
+    setValidationError("");
+    if (!result.success) { setValidationError(result.error.issues[0]?.message ?? "Check your enquiry details."); return; }
+    submission.mutate(result.data);
   };
 
   return <div className="min-h-screen bg-background">
@@ -101,8 +101,10 @@ function HardwarePage() {
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-6 lg:grid-cols-[1fr_1.3fr]">
-        <div><p className="mb-3 font-mono text-xs uppercase tracking-wider text-primary">Let’s talk hardware</p><h2 className="font-display text-3xl font-semibold">Your upgrade starts here.</h2><p className="mt-4 max-w-sm text-muted-foreground">Tell us about your setup and the upgrade you have in mind.</p><div className="mt-6 border-l-2 border-primary pl-4 text-sm leading-relaxed text-muted-foreground"><p className="font-medium text-foreground">Visit enquiries are not open yet.</p><p className="mt-2">You can prepare and download your enquiry below. Nothing is sent, charged or booked. Service areas and contact details are still to be confirmed.</p></div><p className="mt-6 text-sm text-muted-foreground">Hardware services are quoted separately from software plans. No payment details are needed here.</p></div>
-        <form ref={formRef} onSubmit={prepare} onChange={() => { setDraft(""); setNotice(""); }} className="scroll-mt-6 space-y-5">
+        <div><p className="mb-3 font-mono text-xs uppercase tracking-wider text-primary">Let’s talk hardware</p><h2 className="font-display text-3xl font-semibold">Your upgrade starts here.</h2><p className="mt-4 max-w-sm text-muted-foreground">Tell us about your setup and the upgrade you have in mind.</p><div className="mt-6 border-l-2 border-primary pl-4 text-sm leading-relaxed text-muted-foreground"><p className="font-medium text-foreground">Send your enquiry to the LewStappen team.</p><p className="mt-2">Your request is sent privately for review. A visit is only booked once availability, location and the work are agreed.</p></div><p className="mt-6 text-sm text-muted-foreground">Hardware services are quoted separately from software plans. No payment details are needed here.</p></div>
+        <form ref={formRef} onSubmit={submit} onChange={() => { submission.reset(); setValidationError(""); }} className="scroll-mt-6 space-y-5">
+          <div className="hidden" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
+          <fieldset disabled={submission.isPending} className="space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="block text-sm font-medium">Your name<input name="name" required maxLength={100} autoComplete="name" className="field mt-2 w-full" placeholder="Full name" /></label>
             <label className="block text-sm font-medium">Email<input name="email" type="email" required maxLength={254} autoComplete="email" className="field mt-2 w-full" placeholder="you@example.com" /></label>
@@ -112,8 +114,10 @@ function HardwarePage() {
           <label className="block text-sm font-medium">Make / model<input name="model" maxLength={200} className="field mt-2 w-full" placeholder="e.g. Dell OptiPlex 7060, or not sure" /></label>
           <label className="block text-sm font-medium">What would you like to improve?<textarea name="goals" required maxLength={2000} rows={3} className="field mt-2 w-full resize-y" placeholder="More storage, faster gaming, extra server memory…" /></label>
           <label className="block text-sm font-medium">Anything else? <span className="font-normal text-muted-foreground">(optional)</span><textarea name="details" maxLength={2000} rows={2} className="field mt-2 w-full resize-y" placeholder="Current specifications, parts you already have, or questions" /></label>
-          <Button type="submit" size="lg">Prepare visit enquiry <ArrowRight /></Button>
-          {draft && <div className="border-t border-border pt-5" role="status"><p className="flex items-center gap-2 font-medium text-primary"><Check className="h-4 w-4" />Your enquiry draft is ready</p><p className="mt-2 text-sm text-muted-foreground">Not submitted. Download a copy to keep for when visit enquiries open.</p><pre className="mt-4 whitespace-pre-wrap break-words bg-muted p-4 font-sans text-sm">{draft}</pre><Button type="button" variant="outline" className="mt-4" onClick={download}><Download />Download enquiry</Button>{notice && <p className="mt-3 text-sm text-muted-foreground">{notice}</p>}</div>}
+          <Button type="submit" size="lg" disabled={submission.isPending}>{submission.isPending ? <><Loader2 className="animate-spin" />Sending enquiry…</> : <>Send visit enquiry <ArrowRight /></>}</Button>
+          </fieldset>
+          {(validationError || submission.isError) && <p role="alert" className="text-sm text-destructive">{validationError || submission.error?.message}</p>}
+          {submission.isSuccess && <div className="border-t border-border pt-5" role="status"><p className="flex items-center gap-2 font-medium text-primary"><Check className="h-4 w-4" />Your enquiry has been sent</p><p className="mt-2 text-sm text-muted-foreground">The LewStappen team can now review your request. No visit is booked and no payment has been taken.</p></div>}
         </form>
       </section>
     </main>

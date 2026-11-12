@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      hardware_enquiries: {
+        Row: {
+          area: string
+          created_at: string
+          details: string
+          device: string
+          email: string
+          goals: string
+          id: string
+          model: string
+          name: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          details?: string
+          device: string
+          email: string
+          goals: string
+          id: string
+          model?: string
+          name: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          details?: string
+          device?: string
+          email?: string
+          goals?: string
+          id?: string
+          model?: string
+          name?: string
+        }
+        Relationships: []
+      }
       modernizations: {
         Row: {
           created_at: string
