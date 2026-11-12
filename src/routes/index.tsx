@@ -162,13 +162,14 @@ function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-6">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-3 px-4 py-4 sm:grid-cols-[1fr_auto_1fr] sm:px-6">
           <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><Wand2 className="h-5 w-5" /></div>
           <span className="font-display text-lg font-semibold tracking-tight">Lew<span className="text-destructive">Stappen</span></span>
           </div>
-          <div className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
-          <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 text-sm">
+          <div className="row-start-2 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
+          <div className="row-start-3 flex flex-wrap items-center gap-2 text-sm sm:col-start-3 sm:row-start-1 sm:justify-end">
+            <Button asChild variant="outline" size="sm"><Link to="/hardware">Hardware</Link></Button>
             {developer && <Button asChild variant="outline" size="sm"><Link to="/developer">Developer</Link></Button>}
             <Link to="/pricing" className="btn-ghost">Pricing</Link>
             {user ? (

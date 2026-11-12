@@ -60,7 +60,7 @@ function Pricing() {
             <span className="font-display text-lg font-semibold">Lew<span className="text-destructive">Stappen</span></span>
           </Link>
           <div className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><PlanBadge /></div>
-          <div className="col-start-3 row-start-1 flex flex-wrap justify-end gap-2">{developer && <Button asChild variant="outline"><Link to="/developer">Developer</Link></Button>}<Button asChild variant="ghost"><Link to="/">Back to app</Link></Button></div>
+          <div className="col-start-3 row-start-1 flex flex-wrap justify-end gap-2"><Button asChild variant="outline" size="sm"><Link to="/hardware">Hardware</Link></Button>{developer && <Button asChild variant="outline"><Link to="/developer">Developer</Link></Button>}<Button asChild variant="ghost"><Link to="/">Back to app</Link></Button></div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 pb-20">

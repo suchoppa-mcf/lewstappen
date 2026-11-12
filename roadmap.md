@@ -4,3 +4,5 @@
 - [x] Add account-specific specials, email whitelist, and MCFAIC26 redemption.
 - [x] Add protected developer roles, account management, and permanent usage totals.
 - [x] Verify promotion redemption, developer controls, and access restrictions.
+- [x] Add a hardware page for at-home device upgrades and a visit-request draft.
+- [x] Verify hardware navigation, request preparation, and mobile layout.

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as HardwareRouteImport } from './routes/hardware'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as AuthenticatedDeveloperRouteImport } from './routes/_authenticated/developer'
 import { Route as ApiModernizeRouteImport } from './routes/api/modernize'
@@ -28,6 +29,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HardwareRoute = HardwareRouteImport.update({
+  id: '/hardware',
+  path: '/hardware',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -49,6 +55,7 @@ const ApiModernizeRoute = ApiModernizeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/hardware': typeof HardwareRoute
   '/pricing': typeof PricingRoute
   '/developer': typeof AuthenticatedDeveloperRoute
   '/api/modernize': typeof ApiModernizeRoute
@@ -56,6 +63,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/hardware': typeof HardwareRoute
   '/pricing': typeof PricingRoute
   '/developer': typeof AuthenticatedDeveloperRoute
   '/api/modernize': typeof ApiModernizeRoute
@@ -65,20 +73,23 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/hardware': typeof HardwareRoute
   '/pricing': typeof PricingRoute
   '/_authenticated/developer': typeof AuthenticatedDeveloperRoute
   '/api/modernize': typeof ApiModernizeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/pricing' | '/developer' | '/api/modernize'
+  fullPaths:
+    '/' | '/auth' | '/hardware' | '/pricing' | '/developer' | '/api/modernize'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/pricing' | '/developer' | '/api/modernize'
+  to: '/' | '/auth' | '/hardware' | '/pricing' | '/developer' | '/api/modernize'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/hardware'
     | '/pricing'
     | '/_authenticated/developer'
     | '/api/modernize'
@@ -88,6 +99,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  HardwareRoute: typeof HardwareRoute
   PricingRoute: typeof PricingRoute
   ApiModernizeRoute: typeof ApiModernizeRoute
 }
@@ -113,6 +125,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hardware': {
+      id: '/hardware'
+      path: '/hardware'
+      fullPath: '/hardware'
+      preLoaderRoute: typeof HardwareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -154,6 +173,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  HardwareRoute: HardwareRoute,
   PricingRoute: PricingRoute,
   ApiModernizeRoute: ApiModernizeRoute,
 }
